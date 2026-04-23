@@ -53,6 +53,7 @@ func main() {
 	r.Use(gin.Recovery())
 
 	r.POST("/shorten", h.Shorten)
+	r.GET("/:code", h.Redirect)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.ServerPort),

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,21 @@ type URLHandler struct {
 
 func NewURLHandler(svc *service.URLService, log *zap.Logger) *URLHandler {
 	return &URLHandler{svc: svc, log: log}
+}
+
+func (h *URLHandler) Redirect(c *gin.Context) {
+	code := c.Param("code")
+	originalURL, err := h.svc.Redirect(c.Request.Context(), code)
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "short code not found"})
+			return
+		}
+		h.log.Error("redirect failed", zap.String("short_code", code), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	c.Redirect(http.StatusMovedPermanently, originalURL)
 }
 
 func (h *URLHandler) Shorten(c *gin.Context) {

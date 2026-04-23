@@ -43,3 +43,20 @@ func (r *URLRepository) ExistsShortCode(ctx context.Context, code string) (bool,
 		Scan(&exists)
 	return exists, err
 }
+
+func (r *URLRepository) GetByShortCode(ctx context.Context, code string) (*model.URL, error) {
+	url := &model.URL{}
+	err := r.db.QueryRow(ctx,
+		`SELECT id, original_url, short_code, click_count, created_at FROM urls WHERE short_code = $1`, code).
+		Scan(&url.ID, &url.OriginalURL, &url.ShortCode, &url.ClickCount, &url.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return url, nil
+}
+
+func (r *URLRepository) IncrementClickCount(ctx context.Context, code string) error {
+	_, err := r.db.Exec(ctx,
+		`UPDATE urls SET click_count = click_count + 1 WHERE short_code = $1`, code)
+	return err
+}

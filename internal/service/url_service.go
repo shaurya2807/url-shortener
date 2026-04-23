@@ -3,12 +3,16 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/shaurya2807/url-shortener/internal/model"
 	"github.com/shaurya2807/url-shortener/internal/repository"
 	"go.uber.org/zap"
 )
+
+var ErrNotFound = errors.New("short code not found")
 
 const (
 	shortCodeLen = 6
@@ -47,6 +51,29 @@ func (s *URLService) Shorten(ctx context.Context, originalURL string) (*model.Sh
 		OriginalURL: originalURL,
 		CreatedAt:   url.CreatedAt,
 	}, nil
+}
+
+func (s *URLService) Redirect(ctx context.Context, code string) (string, error) {
+	url, err := s.repo.GetByShortCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrNotFound
+		}
+		return "", fmt.Errorf("get by short code: %w", err)
+	}
+
+	go func() {
+		if err := s.repo.IncrementClickCount(context.Background(), code); err != nil {
+			s.log.Error("increment click count failed", zap.String("short_code", code), zap.Error(err))
+		}
+	}()
+
+	s.log.Info("redirect",
+		zap.String("short_code", code),
+		zap.String("original_url", url.OriginalURL),
+	)
+
+	return url.OriginalURL, nil
 }
 
 func (s *URLService) generateUniqueCode(ctx context.Context) (string, error) {
