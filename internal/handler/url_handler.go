@@ -1,0 +1,36 @@
+package handler
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/shaurya2807/url-shortener/internal/model"
+	"github.com/shaurya2807/url-shortener/internal/service"
+	"go.uber.org/zap"
+)
+
+type URLHandler struct {
+	svc *service.URLService
+	log *zap.Logger
+}
+
+func NewURLHandler(svc *service.URLService, log *zap.Logger) *URLHandler {
+	return &URLHandler{svc: svc, log: log}
+}
+
+func (h *URLHandler) Shorten(c *gin.Context) {
+	var req model.ShortenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.svc.Shorten(c.Request.Context(), req.OriginalURL)
+	if err != nil {
+		h.log.Error("shorten failed", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}
