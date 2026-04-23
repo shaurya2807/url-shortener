@@ -20,3 +20,11 @@ type ShortenResponse struct {
 	OriginalURL string    `json:"original_url"`
 	CreatedAt   time.Time `json:"created_at"`
 }
+
+type StatsResponse struct {
+	ShortCode   string    `json:"short_code"`
+	ShortURL    string    `json:"short_url"`
+	OriginalURL string    `json:"original_url"`
+	ClickCount  int64     `json:"click_count"`
+	CreatedAt   time.Time `json:"created_at"`
+}

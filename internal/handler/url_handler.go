@@ -34,6 +34,21 @@ func (h *URLHandler) Redirect(c *gin.Context) {
 	c.Redirect(http.StatusMovedPermanently, originalURL)
 }
 
+func (h *URLHandler) Stats(c *gin.Context) {
+	code := c.Param("code")
+	resp, err := h.svc.GetStats(c.Request.Context(), code)
+	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "short code not found"})
+			return
+		}
+		h.log.Error("get stats failed", zap.String("short_code", code), zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *URLHandler) Shorten(c *gin.Context) {
 	var req model.ShortenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

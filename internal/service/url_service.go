@@ -91,6 +91,23 @@ func (s *URLService) Redirect(ctx context.Context, code string) (string, error) 
 	return url.OriginalURL, nil
 }
 
+func (s *URLService) GetStats(ctx context.Context, code string) (*model.StatsResponse, error) {
+	url, err := s.repo.GetStats(ctx, code)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get stats: %w", err)
+	}
+	return &model.StatsResponse{
+		ShortCode:   url.ShortCode,
+		ShortURL:    s.baseURL + "/" + url.ShortCode,
+		OriginalURL: url.OriginalURL,
+		ClickCount:  url.ClickCount,
+		CreatedAt:   url.CreatedAt,
+	}, nil
+}
+
 func (s *URLService) generateUniqueCode(ctx context.Context) (string, error) {
 	for {
 		code, err := randomCode()

@@ -55,6 +55,7 @@ func main() {
 	r.Use(gin.Recovery())
 
 	r.POST("/shorten", h.Shorten)
+	r.GET("/:code/stats", h.Stats)
 	r.GET("/:code", h.Redirect)
 
 	srv := &http.Server{
