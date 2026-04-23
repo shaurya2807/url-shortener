@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shaurya2807/url-shortener/configs"
+	"github.com/shaurya2807/url-shortener/internal/cache"
 	"github.com/shaurya2807/url-shortener/internal/handler"
 	"github.com/shaurya2807/url-shortener/internal/repository"
 	"github.com/shaurya2807/url-shortener/internal/service"
@@ -42,7 +43,8 @@ func main() {
 	log.Info("database connected")
 
 	repo := repository.NewURLRepository(db)
-	svc := service.NewURLService(repo, cfg.BaseURL, log)
+	redisCache := cache.New(cfg.Redis.Host, cfg.Redis.Port)
+	svc := service.NewURLService(repo, redisCache, cfg.BaseURL, log)
 	h := handler.NewURLHandler(svc, log)
 
 	if cfg.AppEnv == "production" {

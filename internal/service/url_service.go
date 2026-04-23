@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/shaurya2807/url-shortener/internal/cache"
 	"github.com/shaurya2807/url-shortener/internal/model"
 	"github.com/shaurya2807/url-shortener/internal/repository"
 	"go.uber.org/zap"
@@ -21,12 +22,13 @@ const (
 
 type URLService struct {
 	repo    *repository.URLRepository
+	cache   *cache.Cache
 	baseURL string
 	log     *zap.Logger
 }
 
-func NewURLService(repo *repository.URLRepository, baseURL string, log *zap.Logger) *URLService {
-	return &URLService{repo: repo, baseURL: baseURL, log: log}
+func NewURLService(repo *repository.URLRepository, cache *cache.Cache, baseURL string, log *zap.Logger) *URLService {
+	return &URLService{repo: repo, cache: cache, baseURL: baseURL, log: log}
 }
 
 func (s *URLService) Shorten(ctx context.Context, originalURL string) (*model.ShortenResponse, error) {
@@ -54,6 +56,11 @@ func (s *URLService) Shorten(ctx context.Context, originalURL string) (*model.Sh
 }
 
 func (s *URLService) Redirect(ctx context.Context, code string) (string, error) {
+	if cached, err := s.cache.Get(ctx, code); err == nil && cached != "" {
+		s.log.Info("cache hit", zap.String("short_code", code))
+		return cached, nil
+	}
+
 	url, err := s.repo.GetByShortCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -61,6 +68,14 @@ func (s *URLService) Redirect(ctx context.Context, code string) (string, error) 
 		}
 		return "", fmt.Errorf("get by short code: %w", err)
 	}
+
+	s.log.Info("cache miss", zap.String("short_code", code))
+
+	go func() {
+		if err := s.cache.Set(context.Background(), code, url.OriginalURL); err != nil {
+			s.log.Error("cache set failed", zap.String("short_code", code), zap.Error(err))
+		}
+	}()
 
 	go func() {
 		if err := s.repo.IncrementClickCount(context.Background(), code); err != nil {

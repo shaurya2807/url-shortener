@@ -13,6 +13,12 @@ type Config struct {
 	ServerPort int
 	DB         DBConfig
 	BaseURL    string
+	Redis      RedisConfig
+}
+
+type RedisConfig struct {
+	Host string
+	Port int
 }
 
 type DBConfig struct {
@@ -44,6 +50,11 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
 	}
 
+	redisPort, err := strconv.Atoi(getEnv("REDIS_PORT", "6379"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid REDIS_PORT: %w", err)
+	}
+
 	return &Config{
 		AppEnv:     getEnv("APP_ENV", "development"),
 		ServerPort: serverPort,
@@ -55,6 +66,10 @@ func Load() (*Config, error) {
 			Password: getEnv("DB_PASSWORD", "postgres"),
 			Name:     getEnv("DB_NAME", "urlshortener"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+		},
+		Redis: RedisConfig{
+			Host: getEnv("REDIS_HOST", "localhost"),
+			Port: redisPort,
 		},
 	}, nil
 }
