@@ -1,4 +1,4 @@
-# URL Shortener
+# Scalable URL Shortener Service
 
 High-performance URL shortener with Redis caching built in Go.
 
